@@ -69,6 +69,7 @@ public:
     Return<void> onFingerUp() override;
 
 private:
+    static void setFodHbm(bool);
     static fingerprint_device_t* openHal();
     static void notify(const fingerprint_msg_t *msg); /* Static callback for legacy HAL implementation */
     static Return<RequestStatus> ErrorFilter(int32_t error);
@@ -77,6 +78,7 @@ private:
     static BiometricsFingerprint* sInstance;
     static void *cancelErr(void *data);
 
+    std::mutex mSetHbmFodMutex;
     std::mutex mClientCallbackMutex;
     sp<IBiometricsFingerprintClientCallback> mClientCallback;
     fingerprint_device_t *mDevice;
