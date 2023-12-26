@@ -16,6 +16,8 @@
 #define LOG_TAG "android.hardware.biometrics.fingerprint@2.3-service.zahedan"
 #define LOG_VERBOSE "android.hardware.biometrics.fingerprint@2.3-service.zahedan"
 
+#include <android-base/file.h>
+
 #include <hardware/hw_auth_token.h>
 
 #include <hardware/hardware.h>
@@ -25,7 +27,13 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include <chrono>
+#include <thread>
+
 #define GF_ERROR_CANCELED 1009
+
+#define FOD_EN_DELAY 16400 // Microseconds
+#define FOD_HBM_PATH "/sys/class/leds/lcd-backlight/brightness"
 
 namespace android {
 namespace hardware {
@@ -67,23 +75,35 @@ BiometricsFingerprint::~BiometricsFingerprint() {
     goodixExtCmd = nullptr;
 }
 
+void BiometricsFingerprint::setFodHbm(bool status) {
+    BiometricsFingerprint* thisPtr = static_cast<BiometricsFingerprint*>(
+            BiometricsFingerprint::getInstance());
+    std::lock_guard<std::mutex> lock(thisPtr->mSetHbmFodMutex);
+    android::base::WriteStringToFile(status ? "260" : "270", FOD_HBM_PATH);
+}
+
 Return<bool> BiometricsFingerprint::isUdfps(uint32_t) {
     return true;
 }
 
 Return<void> BiometricsFingerprint::onFingerDown(uint32_t, uint32_t, float, float) {
-    goodixExtCmd(0, 1, 0);
+    std::thread([this]() {
+        std::this_thread::sleep_for(std::chrono::microseconds(FOD_EN_DELAY));
+        setFodHbm(true);
+        goodixExtCmd(0, 1, 0);
+    }).detach();
 
     return Void();
 }
 
 Return<void> BiometricsFingerprint::onFingerUp() {
+    setFodHbm(false);
     goodixExtCmd(0, 0, 0);
-
     return Void();
 }
 
 Return<RequestStatus> BiometricsFingerprint::ErrorFilter(int32_t error) {
+    setFodHbm(false);
     switch(error) {
         case 0: return RequestStatus::SYS_OK;
         case -2: return RequestStatus::SYS_ENOENT;
@@ -137,6 +157,7 @@ FingerprintError BiometricsFingerprint::VendorErrorFilter(int32_t error,
 // to HIDL-compliant FingerprintAcquiredInfo.
 FingerprintAcquiredInfo BiometricsFingerprint::VendorAcquiredFilter(
         int32_t info, int32_t* vendorCode) {
+    setFodHbm(false);
     switch(info) {
         case FINGERPRINT_ACQUIRED_GOOD:
             return FingerprintAcquiredInfo::ACQUIRED_GOOD;
@@ -178,7 +199,6 @@ Return<uint64_t> BiometricsFingerprint::preEnroll()  {
 
 void *BiometricsFingerprint::cancelErr(void *data) {
     BiometricsFingerprint *thisPtr = static_cast<BiometricsFingerprint *>(data);
-
     sleep(1);
     const uint64_t devId = reinterpret_cast<uint64_t>(thisPtr->mDevice);
     if (!thisPtr->mClientCallback->onError(devId, FingerprintError::ERROR_CANCELED, 0).isOk()) {
