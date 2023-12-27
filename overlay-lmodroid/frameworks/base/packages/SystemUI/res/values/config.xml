@@ -78,4 +78,5 @@
     <!-- Udfps animation -->
     <dimen name="udfps_animation_offset">3dp</dimen>
 
+    <integer name="config_udfpsEnrollAddDotSize">4</integer>
 </resources>
