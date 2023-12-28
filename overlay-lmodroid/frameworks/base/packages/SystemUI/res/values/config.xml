@@ -65,10 +65,12 @@
     <!-- The amount of delay to add when disabling the dimming.
     This is used to prevent flickers due to the dimming being disabled
     before the screen has had chance to switch out of HBM mode -->
-    <integer name="config_udfpsDimmingDisableDelay">4</integer>
+    <integer name="config_udfpsDimmingDisableDelay">16</integer>
+    <integer name="config_udfpsEnrollDimmingDisableDelay">15000</integer>
 
     <!-- Udfps animation -->
     <dimen name="udfps_animation_offset">3dp</dimen>
 
     <integer name="config_udfpsEnrollAddDotSize">4</integer>
+    <bool name="config_udfpsDimmingDelayOnlyOnUnlock">true</bool>
 </resources>
