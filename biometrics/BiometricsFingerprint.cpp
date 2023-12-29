@@ -89,7 +89,6 @@ Return<bool> BiometricsFingerprint::isUdfps(uint32_t) {
 Return<void> BiometricsFingerprint::onFingerDown(uint32_t, uint32_t, float, float) {
     std::thread([this]() {
         std::this_thread::sleep_for(std::chrono::microseconds(FOD_EN_DELAY));
-        setFodHbm(true);
         goodixExtCmd(0, 1, 0);
     }).detach();
 
@@ -97,13 +96,11 @@ Return<void> BiometricsFingerprint::onFingerDown(uint32_t, uint32_t, float, floa
 }
 
 Return<void> BiometricsFingerprint::onFingerUp() {
-    setFodHbm(false);
     goodixExtCmd(0, 0, 0);
     return Void();
 }
 
 Return<RequestStatus> BiometricsFingerprint::ErrorFilter(int32_t error) {
-    setFodHbm(false);
     switch(error) {
         case 0: return RequestStatus::SYS_OK;
         case -2: return RequestStatus::SYS_ENOENT;
@@ -157,7 +154,6 @@ FingerprintError BiometricsFingerprint::VendorErrorFilter(int32_t error,
 // to HIDL-compliant FingerprintAcquiredInfo.
 FingerprintAcquiredInfo BiometricsFingerprint::VendorAcquiredFilter(
         int32_t info, int32_t* vendorCode) {
-    setFodHbm(false);
     switch(info) {
         case FINGERPRINT_ACQUIRED_GOOD:
             return FingerprintAcquiredInfo::ACQUIRED_GOOD;
